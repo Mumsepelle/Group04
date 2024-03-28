@@ -72,7 +72,7 @@ to setup
 end
 ;_____________________________________________________
 to go
-  ;TITTA PÅ MIG
+
   ask turtles
   [
     if(breed = citizens)
