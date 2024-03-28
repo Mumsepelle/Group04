@@ -1,4 +1,4 @@
-globals[turtle_list neighbour_list]
+globals[turtle_list neighbour_list num_prison]
 ;_____________________________________________________
 breed [citizens citizen]
 breed [cops cop]
@@ -11,17 +11,21 @@ patches-own
 ;_____________________________________________________
 citizens-own
 [
-  inPrison?
   jailtime
   jailsentence
-  ;citizen-vision ;slider
-  ;citizen-speed ;slider
+  cruising?
+  fleeing?
+  inPrison?
+
+  state
+  next_state
+
+  citizen_vision
+  citizen_speed
 ]
 ;_____________________________________________________
 cops-own
 [
-  ;cop-vision ;set by slider
-  ;cop-speed ;set by slider?
   energy
   resting?
 ]
@@ -34,6 +38,7 @@ to setup
   set neighbour_list[]
 
   ;set max_jail_time 50
+  set num_prison 0
 
   ask patches
   [
@@ -62,8 +67,9 @@ to setup
     set size 2
     move-to one-of patches with[not any? turtles-here and region != "prison" and region != "restaurant"]
     set inPrison? false
-    ;set citizen-speed 1
-    ;set citizen-vision 5
+    set state "cruising"
+    set citizen_speed random (citizen_speed_slider) + 1
+    set citizen_vision random (citizen_vision_slider) + 1
   ]
 
   create-cops num_cops
@@ -72,9 +78,7 @@ to setup
     set shape "car"
     set size 2
     move-to one-of patches with[not any? turtles-here and region != "prison"and region != "restaurant"]
-    set energy 100
-    ;set cop-speed 2
-    ;set cop-vision 10
+    set energy random max_energy
   ]
 end
 
@@ -89,73 +93,104 @@ end
 
 ;_____________________CITIZEN_________________________
 to citizen_behavior
-ifelse inPrison? = true
+
+if state = "cruising"
 [
-    set jailtime jailtime + 1
-    if jailtime = jailsentence
-    [
-      set inPrison? false
-      set jailtime 0
-      set color black
-      move-to one-of patches with[not any? cops-here and region != "prison"]
-    ]
-]
-[
-  let nearby-police other cops in-radius citizen_vision
-  if any? nearby-police
+  let nearby-police other cops in-radius citizen_vision                                      ;SER OM DET FINNS POLISER I CITIZENS NÄRHET
+  ifelse any? nearby-police  [set next_state  "fleeing"]
   [
-    let police min-one-of nearby-police [distance myself]
-    if police != nobody   [set heading (towards police) + 180]
+    let next_patch patch-ahead citizen_speed
+    if [region] of next_patch = "prison" [set heading heading + (random 180) + 90]          ;SÅ ATT CITIZEN INTE GÅR IN I FÄNGELSET
+    if [region] of next_patch = "restaurant" [set heading heading + (random 180) + 90]      ;SÅ ATT CITIZEN INTE GÅR IN I RESTAURANGEN
+    fd citizen_speed
+    set next_state "cruising"
   ]
-
-  let next_patch patch-ahead citizen_speed
-  if [region] of next_patch = "prison" [set heading heading + 180]
-  if [region] of next_patch = "restaurant" [set heading heading + 180]
-
-  fd citizen_speed
-  ;let places neighborhood with [not any? cops-here and region != "prison" and region != "restaurant"]
-  ;if any? places[move-to one-of places]
 ]
+
+if state = "fleeing"
+[
+  ifelse inPrison? = true [set next_state "arrested"]
+  [
+    let nearby-police other cops in-radius citizen_vision
+    ifelse any? nearby-police
+    [
+      let police min-one-of nearby-police [distance myself]
+      if police != nobody   [set heading (towards police) + (random 180 + 90)]
+      set next_state "fleeing"
+    ]
+    [set next_state "cruising"]
+
+    let next_patch patch-ahead citizen_speed
+    if [region] of next_patch = "prison" [set heading heading + (random 180) + 90]        ;SÅ ATT CITIZEN INTE GÅR IN I FÄNGELSET
+    if [region] of next_patch = "restaurant" [set heading heading + (random 180) + 90]    ;SÅ ATT CITIZEN INTE GÅR IN I RESTAUTRANGEN
+    fd citizen_speed
+  ]
+]
+
+if state = "arrested"
+[
+  move-to one-of patches with[not any? citizens-here and region = "prison"]      ;FLYTTAS TILL FÄNGELSET
+  set next_state "prison"
+  set color white
+  set inPrison? true
+  set num_prison (num_prison + 1)    ;MONITOR I INTERFACET
+]
+
+if state = "prison"
+[
+  set jailtime jailtime + 1
+  ifelse jailtime = jailsentence                                                ;FÄNGELSESTRAFFET ÄR ÖVER
+  [
+    set num_prison (num_prison - 1)  ;MONITOR I INTERFACET
+    set inPrison? false
+    set jailtime 0
+    set color black
+    move-to one-of patches with[not any? cops-here and region != "prison"]       ;FLYTTAS TILL EN PATCH UTANFÖR FÄNGELSET DÄR DET INTE FINNS NÅGRA POLISER
+    set next_state "cruising"
+  ]
+  [set next_state "prison"]
+]
+
+set state next_state
 end
 
 ;_______________________COP_________________________
+;LÅTER POLISEN STYRAS MED MUSEN
 to cop_behavior_test
-setxy mouse-xcor mouse-ycor
+  setxy mouse-xcor mouse-ycor
 end
 
 to cop_behavior
-  let suspect one-of citizens-here with [inPrison? = false]
-
   ifelse resting? = true
   [
     set energy (energy + 1)
-    if energy = 100
+    if energy = max_energy    ;OM POLISEN ÄR ÅTERHÄMTAD
     [
       set resting? false
       move-to one-of patches with [not any? cops-here and region != "restaurant" and region != "prison"]
     ]
   ]
   [
+    let suspect one-of citizens-here with [inPrison? = false]    ;KOLLAR IFALL DET FINNS EN CITIZEN I SAMMA PATCH
     ifelse suspect != nobody
-  [
-    ask suspect
+    [
+    ask suspect                                                  ;OM DET FINNS STOPPAR POLISEN DEN I FÄNGELSE
     [
       set jailsentence random max_jail_time
-      gotoprison
+      set inPrison? true
     ]
   ]
   [
-    set suspect one-of other citizens with [inPrison? = false] in-radius cop_vision
+    set suspect one-of other citizens with [inPrison? = false] in-radius cop_vision    ;BESTÄMMER EN NY GÄRNINGSMAN BASERAT PÅ CITIZENS SOM POLISEN KAN SE
     if suspect != nobody [face suspect]
 
     let next_patch patch-ahead cop_speed
-    if [region] of next_patch = "prison" [set heading heading + 180]
-    if [region] of next_patch = "restaurant" [set heading heading + 180]
+    if [region] of next_patch = "prison" [set heading heading + 180]          ;SÅ ATT POLISEN INTE GÅR IN I FÄNGELSET
+    if [region] of next_patch = "restaurant" [set heading heading + 180]      ;SÅ ATT POLISEN INTE GÅR IN I RESTAURANGEN
 
     forward cop_speed
 
     set energy (energy - 1)
-    print(energy)
     if energy = 0
     [
       set resting? true
@@ -164,14 +199,6 @@ to cop_behavior
   ]
   ]
 end
-
-;______________________GO TO PRISON__________________________
-to gotoprison
-  set inPrison? true
-  set color white
-  move-to one-of patches with[not any? citizens-here and region = "prison"]
-end
-;_____________________________________________________
 @#$#@#$#@
 GRAPHICS-WINDOW
 28
@@ -239,11 +266,11 @@ SLIDER
 446
 771
 479
-citizen_vision
-citizen_vision
+citizen_vision_slider
+citizen_vision_slider
 0
 10
-5.0
+4.0
 1
 1
 NIL
@@ -269,8 +296,8 @@ SLIDER
 477
 771
 510
-citizen_speed
-citizen_speed
+citizen_speed_slider
+citizen_speed_slider
 0
 10
 1.0
@@ -288,7 +315,7 @@ cop_speed
 cop_speed
 0
 10
-2.0
+1.0
 1
 1
 NIL
@@ -303,7 +330,7 @@ num_cops
 num_cops
 0
 20
-2.0
+3.0
 1
 1
 NIL
@@ -333,11 +360,37 @@ max_jail_time
 max_jail_time
 0
 200
-50.0
+200.0
 1
 1
 NIL
 HORIZONTAL
+
+SLIDER
+597
+195
+769
+228
+max_energy
+max_energy
+0
+500
+500.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+798
+20
+912
+65
+Citizen in prison
+num_prison
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
