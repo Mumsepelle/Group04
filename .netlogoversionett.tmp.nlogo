@@ -22,7 +22,7 @@ cops-own
 patches-own
 [
 region
-  hello
+
 ]
 
 
