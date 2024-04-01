@@ -57,14 +57,6 @@
 ;    ]
 
 
-; ************ INCLUDED FILES *****************
-__includes [
-    "citizens.nls"
-    "cops.nls"
-    "vid.nls" ; contains the code for the recorder. You also need to activate the vid-extension and the command at the end of setup
-]
-; ********************end included files ********
-
 ; ************ EXTENSIONS *****************
 extensions [
  vid bitmap; used for recording of the simulation
@@ -79,12 +71,12 @@ breed [cops cop] ;
 
 globals [
   ;
-  max-jailterm
+  max_jailterm
 ]
 
 ;---- General agent variables
 turtles-own [
-  ;speed
+  speed
 ]
 
 ;---- Specific, local variables of patches
@@ -95,15 +87,17 @@ patches-own [
 
 ;---- Specific, local variables of citizen-agents
 citizens-own [
-  ;citizen-vision is set by ruler 'citizen-vision'
+  citizen_vision ;is set by ruler 'citizen-vision'
   inPrison?
   jailtime
   jailsentence
+  current_state
 ]
 ;---- Specific, local variables of cop-agents
 cops-own [
-  ;cop-vision is set by slider
-  cop-speed
+  cop_vision ;is set by slider
+  energy
+  resting?
 ]
 
 
@@ -114,50 +108,61 @@ cops-own [
 to setup
   clear-all
   ; define global variables that are not set as sliders
-  set max-jailterm 50
+  set max_jailterm 50
 
 
   ; setup of the environment:
   ; setup of all patches
   ask patches [
     ; make background a certain color or leave it black
-    ;set pcolor white - 1
+    ; set pcolor white - 1
     ; cache patch neighborhoods
     set neighborhood patches in-radius citizen-vision
   ]
   ; setup prison
-  let prisonpatches patches with [ pxcor >= -5 and pxcor <= 20 and pycor >= -5 and pycor <= 15 ]
+  let prisonpatches patches with [ pxcor >= -5 and pxcor <= 10 and pycor >= -5 and pycor <= 10 ]
     ask prisonpatches [
       set pcolor gray
       set region "prison"
     ]
     ask one-of prisonpatches [set plabel "PRISON"]
 
+  let restaurantpatches patches with [ pxcor >= 56 and pxcor <= 70 and pycor >= 23 and pycor <= 40 ]
+    ask restaurantpatches [
+      set pcolor pink
+      set region "restaurant"
+    ]
+    ask one-of restaurantpatches [set plabel "RESTAURANT"]
+
 
   ; setup citizen-agents
   create-citizens num-citizens [
-    set label who
+    ;set label who
     set shape "person"
     set size 1.5
     set color green
     setxy random-xcor random-ycor
     ; make sure the agents are not placed in prison already during setup:
-    move-to one-of patches with [ not any? turtles-here and region != "prison"]
+    move-to one-of patches with [ not any? turtles-here and region != "prison" and region != "restaurant"]
     ; setting specific variables for citizen
     set inPrison? false
     set jailtime 0
     set jailsentence 0
-    ;set speed random 5 + 1 ; make sure it cannot be 0
+    set current_state "cruising"
+    set speed random 3 + 1 ; make sure it cannot be 0
+    set citizen_vision citizen-vision
   ]
 
   ;---- setup cops
   create-cops num-cops [
-    set label who
+    ;set label who
     set shape "person police"
     set size 2
     set color blue
-    set cop-speed random 3 + 1 ; make sure it cannot be 0
-    move-to one-of patches with [ not any? turtles-here and region != "prison"]
+    set speed random 3 + 1 ; make sure it cannot be 0
+    move-to one-of patches with [ not any? turtles-here and region != "prison" and region != "restaurant" ]
+    set cop_vision cop-vision
+    set energy random 100 + 1
   ]
 
 
@@ -204,15 +209,180 @@ to go
   ]
 
 end ; - to go part
+
+
+
+to citizen_behavior
+
+; checking if the citizen is in prison
+ifelse inPrison? = true [
+    set jailtime jailtime + 1 ;counting the time in prison
+    ;print (word "citizen " who "is in prison since: " jailtime)
+    if jailtime > jailsentence [; released from prison
+      set jailtime 0
+      ; move forward where there are no cops and is not prison
+      setxy random-xcor random-ycor
+      move-to one-of patches with [ not any? turtles-here and region != "prison" and region != "restaurant" ]
+      set inPrison? false
+      set color green
+      ;print (word "citizen " who "is released from prison")
+    ]
+  ]
+  [;else checking if cops are within vision radius
+    let nearby-police other cops in-radius citizen-vision
+    if any? nearby-police [
+      let police min-one-of nearby-police [distance myself]; identify the cop that is nearest
+      if police != nobody [
+        ;print (word " citizen: " who " sees cop: " police)
+        set heading (towards police) + 180 ; face opposite from the nearest police
+      ]
+    ]
+    ; move forward where there are no cops and is not prison
+    let places neighborhood with [not any? cops-here and region != "prison" and region != "restaurant" ]
+    if any? places [move-to one-of places]
+  ]
+end
+
+;to citizen_behavior2
+;  ;if inPrison? = true [
+;  ;   set current_state "inprison"
+;  ; ]
+;  ;; Transition between states based on the current state
+;  if current_state = "cruising" [
+;    let nearby-police other cops in-radius citizen-vision
+;    ifelse any? nearby-police [
+;      set current_state "fleeing"
+;    ] [
+;    let places neighborhood with [not any? cops-here and region != "prison" and region != "restaurant" ]
+;    if any? places [move-to one-of places]
+;    ]
+;  ]
+;  if current_state = "fleeing" [
+;    ifelse inPrison? = true [
+;      set current_state "inprison"
+;    ] [
+;    let nearby-police other cops in-radius citizen_vision
+;    ifelse any? nearby-police [
+;      let police min-one-of nearby-police [distance myself]; identify the cop that is nearest
+;      if police != nobody [
+;        ;print (word " citizen: " who " sees cop: " police)
+;        set heading (towards police) + 180 ; face opposite from the nearest police
+;        let places neighborhood with [not any? cops-here and region != "prison" and region != "restaurant" ]
+;        if any? places [move-to one-of places]
+;      ]
+;    ] [
+;      set current_state "cruising"
+;    ]
+;    ]
+;  ]
+;  if current_state = "inprison" [
+;    set jailtime jailtime + 1 ;counting the time in prison
+;    ;print (word "citizen " who "is in prison since: " jailtime)
+;    if jailtime > jailsentence [; released from prison
+;      set jailtime 0
+;      ; move forward where there are no cops and is not prison
+;      setxy random-xcor random-ycor
+;      move-to one-of patches with [ not any? turtles-here and region != "prison" and region != "restaurant" ]
+;      set inPrison? false
+;      set color green
+;      ;print (word "citizen " who "is released from prison")
+;      set current_state "cruising"
+;    ]
+;  ]
+;end
+
+; if asked to go to prison
+to gotoprison
+  ; set flag
+  set inPrison? true
+  set color red
+  ; move to prison into an own cell (=own patch)
+  move-to one-of patches with [not any? turtles-here and region = "prison"]
+end
+
+
+to cop_behavior
+  ; check if citizen is nearby to arrest
+  ifelse resting? = true [
+    set energy (energy + 1)
+    if energy >= 100 [
+      move-to one-of patches with [not any? turtles-here and region != "restaurant" and region != "prison"]
+      set resting? false
+    ]
+  ] [
+  let suspect one-of citizens-here with [inPrison? = false] ; need to make sure the citizen is not in jail, otherwise can the cop be trapped besides
+    ifelse suspect != nobody [
+        ; move the citizen to prison and mark them as arrested
+        ;print (word " cop-agent: " who " puts suspect: " suspect " to prison!")
+        ask suspect [
+           set jailsentence random max_jailterm + 100
+           gotoprison
+        ]
+    ]
+    [; else look for citizens and move towards them
+     set suspect one-of other citizens with [inPrison? = false] in-radius cop_vision
+     if suspect != nobody [
+        ;print (word " cop-agent: " who " sees suspect: " suspect)
+        face suspect
+    ]
+    ;forward cop-speed ; move forward towards suspect
+    let next_patch patch-ahead speed
+    ifelse [region] of next_patch = "prison" or [region] of next_patch = "restaurant" [
+      ; Change direction
+      set heading (heading + 180) ; Reverse direction
+    ] [
+      forward speed ; move forward towards suspect
+      set energy (energy - 1)
+      if energy <= 0 [
+          move-to one-of patches with [not any? turtles-here and region = "restaurant"]
+          set resting? true
+        ]
+    ]
+  ]]
+end
+
+
+to start-recorder
+  carefully [ vid:start-recorder] [ user-message error-message ]
+end
+
+to reset-recorder
+  let message (word
+    "If you reset the recorder, the current recording will be lost."
+    "Are you sure you want to reset the recorder?")
+  if vid:recorder-status = "inactive" or user-yes-or-no? message [
+    vid:reset-recorder
+  ]
+end
+
+to save-recording
+  if vid:recorder-status = "inactive" [
+    user-message "The recorder is inactive. There is nothing to save."
+    stop
+  ]
+  ; prompt user for movie location
+  user-message (word
+    "Choose a name for your movie file (the "
+    ".mp4 extension will be automatically added).")
+  let path user-new-file
+  if not is-string? path [ stop ]  ; stop if user canceled
+  ; export the movie
+  carefully [
+    vid:save-recording path
+    user-message (word "Exported movie to " path ".")
+  ] [
+    user-message error-message
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-549
+354
 10
-1731
-614
+1402
+546
 -1
 -1
-17.5224
+15.5224
 1
 10
 1
@@ -233,15 +403,15 @@ ticks
 30.0
 
 SLIDER
-23
-397
-137
-430
+19
+276
+133
+309
 num-citizens
 num-citizens
-1
+0
 30
-19.0
+10.0
 1
 1
 NIL
@@ -282,55 +452,55 @@ NIL
 1
 
 SLIDER
-23
-437
-136
-470
+19
+316
+132
+349
 num-cops
 num-cops
 0
 50
-4.0
+10.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-156
-398
-248
-431
+152
+277
+269
+310
 citizen-vision
 citizen-vision
 1
 10
-3.0
+4.0
 0.1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-156
-436
-248
-469
+152
+315
+272
+348
 cop-vision
 cop-vision
 1
 10
-3.0
+6.0
 0.1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-21
-500
-109
-533
+17
+379
+105
+412
 start recorder
 start-recorder
 NIL
@@ -344,10 +514,10 @@ NIL
 1
 
 BUTTON
-19
-542
-108
-575
+15
+421
+104
+454
 reset recorder
 reset-recorder
 NIL
@@ -361,10 +531,10 @@ NIL
 1
 
 BUTTON
-18
-584
-107
-617
+14
+463
+103
+496
 save recording
 save-recording
 NIL
@@ -378,10 +548,10 @@ NIL
 1
 
 MONITOR
-124
-503
-244
-548
+120
+382
+240
+427
 NIL
 vid:recorder-status
 3
@@ -389,20 +559,20 @@ vid:recorder-status
 11
 
 CHOOSER
-124
-559
-243
-604
+120
+438
+239
+483
 Source
 Source
 "Only View" "With Interface"
 1
 
 TEXTBOX
-18
-468
-253
-496
+14
+347
+249
+375
 _______________________________________
 11
 0.0
@@ -773,7 +943,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.3.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
