@@ -1,4 +1,9 @@
 globals[turtle_list neighbour_list num_prison]
+
+extensions [
+ vid bitmap; used for recording of the simulation
+]
+
 ;_____________________________________________________
 breed [citizens citizen]
 breed [cops cop]
@@ -13,8 +18,6 @@ citizens-own
 [
   jailtime
   jailsentence
-  cruising?
-  fleeing?
   inPrison?
 
   state
@@ -37,14 +40,16 @@ to setup
   set turtle_list[]
   set neighbour_list[]
 
-  ;set max_jail_time 50
-  set num_prison 0
+  set num_prison 0                        ;ANTALET CITIZENS I FÄNGELSE
 
   ask patches
   [
     set pcolor gray
-    set neighborhood patches in-radius 1   ;SETS NEIGHBOURS TO EACH PATCH
+    set neighborhood patches in-radius citizen_vision_slider   ;SETS NEIGHBOURS TO EACH PATCH
   ]
+
+
+
 
   let prisonpatches patches with [ pxcor >= -20 and pxcor <= -10 and pycor >= -20 and pycor <= -10]
   ask prisonpatches
@@ -70,6 +75,7 @@ to setup
     set state "cruising"
     set citizen_speed random (citizen_speed_slider) + 1
     set citizen_vision random (citizen_vision_slider) + 1
+    ;ask patches in-radius citizen_vision [set pcolor green]
   ]
 
   create-cops num_cops
@@ -79,7 +85,15 @@ to setup
     set size 2
     move-to one-of patches with[not any? turtles-here and region != "prison"and region != "restaurant"]
     set energy random max_energy
+    ;ask patches in-radius cop_vision [set pcolor green]
   ]
+
+  reset-ticks
+  if vid:recorder-status = "recording" [
+    if Source = "Only View" [vid:record-view] ; records the plane
+    if Source = "With Interface" [vid:record-interface] ; records the interface
+  ]
+
 end
 
 ;_________________________GO____________________________
@@ -89,6 +103,13 @@ to go
     if(breed = citizens)  [citizen_behavior]
     if(breed = cops)      [cop_behavior]
   ]
+
+  if vid:recorder-status = "recording" [
+    if Source = "Only View" [vid:record-view] ; records the plane
+    if Source = "With Interface" [vid:record-interface] ; records the interface
+  ]
+
+  tick
 end
 
 ;_____________________CITIZEN_________________________
@@ -133,7 +154,7 @@ if state = "arrested"
   set next_state "prison"
   set color white
   set inPrison? true
-  set num_prison (num_prison + 1)
+  set num_prison (num_prison + 1)    ;MONITOR I INTERFACET
 ]
 
 if state = "prison"
@@ -141,7 +162,7 @@ if state = "prison"
   set jailtime jailtime + 1
   ifelse jailtime = jailsentence                                                ;FÄNGELSESTRAFFET ÄR ÖVER
   [
-    set num_prison (num_prison - 1)
+    set num_prison (num_prison - 1)  ;MONITOR I INTERFACET
     set inPrison? false
     set jailtime 0
     set color black
@@ -171,24 +192,31 @@ to cop_behavior
     ]
   ]
   [
+
+  repeat cop_speed
+  [
     let suspect one-of citizens-here with [inPrison? = false]    ;KOLLAR IFALL DET FINNS EN CITIZEN I SAMMA PATCH
     ifelse suspect != nobody
     [
     ask suspect                                                  ;OM DET FINNS STOPPAR POLISEN DEN I FÄNGELSE
     [
-      set jailsentence random max_jail_time
+      set jailsentence random max_jail_time + 100
       set inPrison? true
+      set suspect one-of other citizens with [inPrison? = false] in-radius cop_vision    ;BESTÄMMER EN NY GÄRNINGSMAN BASERAT PÅ CITIZENS SOM POLISEN KAN SE
+    ]
+    ]
+    [
+      if suspect = nobody [set suspect one-of other citizens with [inPrison? = false] in-radius cop_vision]    ;BESTÄMMER EN NY GÄRNINGSMAN BASERAT PÅ CITIZENS SOM POLISEN KAN SE]
+      ;set suspect one-of other citizens with [inPrison? = false] in-radius cop_vision    ;BESTÄMMER EN NY GÄRNINGSMAN BASERAT PÅ CITIZENS SOM POLISEN KAN SE
+      if suspect != nobody [face suspect]
+
+      let next_patch patch-ahead 1
+      if [region] of next_patch = "prison" [set heading heading + 180]          ;SÅ ATT POLISEN INTE GÅR IN I FÄNGELSET
+      if [region] of next_patch = "restaurant" [set heading heading + 180]      ;SÅ ATT POLISEN INTE GÅR IN I RESTAURANGEN
+
+      forward 1
     ]
   ]
-  [
-    set suspect one-of other citizens with [inPrison? = false] in-radius cop_vision    ;BESTÄMMER EN NY GÄRNINGSMAN BASERAT PÅ CITIZENS SOM POLISEN KAN SE
-    if suspect != nobody [face suspect]
-
-    let next_patch patch-ahead cop_speed
-    if [region] of next_patch = "prison" [set heading heading + 180]          ;SÅ ATT POLISEN INTE GÅR IN I FÄNGELSET
-    if [region] of next_patch = "restaurant" [set heading heading + 180]      ;SÅ ATT POLISEN INTE GÅR IN I RESTAURANGEN
-
-    forward cop_speed
 
     set energy (energy - 1)
     if energy = 0
@@ -197,6 +225,40 @@ to cop_behavior
       move-to one-of patches with [not any? cops-here and region = "restaurant"]
     ]
   ]
+
+end
+
+;_____________________RECORDING_________________________
+to start-recorder
+  carefully [vid:start-recorder] [ user-message error-message ]
+end
+
+to reset-recorder
+  let message (word
+    "If you reset the recorder, the current recording will be lost."
+    "Are you sure you want to reset the recorder?")
+  if vid:recorder-status = "inactive" or user-yes-or-no? message [
+    vid:reset-recorder
+  ]
+end
+
+to save-recording
+  if vid:recorder-status = "inactive" [
+    user-message "The recorder is inactive. There is nothing to save."
+    stop
+  ]
+  ; prompt user for movie location
+  user-message (word
+    "Choose a name for your movie file (the "
+    ".mp4 extension will be automatically added).")
+  let path user-new-file
+  if not is-string? path [ stop ]  ; stop if user canceled
+  ; export the movie
+  carefully [
+    vid:save-recording path
+    user-message (word "Exported movie to " path ".")
+  ] [
+    user-message error-message
   ]
 end
 @#$#@#$#@
@@ -270,7 +332,7 @@ citizen_vision_slider
 citizen_vision_slider
 0
 10
-4.0
+5.0
 1
 1
 NIL
@@ -285,7 +347,7 @@ cop_vision
 cop_vision
 0
 20
-6.0
+10.0
 1
 1
 NIL
@@ -330,7 +392,7 @@ num_cops
 num_cops
 0
 20
-3.0
+1.0
 1
 1
 NIL
@@ -345,7 +407,7 @@ num_citizen
 num_citizen
 0
 50
-10.0
+20.0
 1
 1
 NIL
@@ -359,8 +421,8 @@ SLIDER
 max_jail_time
 max_jail_time
 0
-200
-200.0
+10000
+500.0
 1
 1
 NIL
@@ -375,7 +437,7 @@ max_energy
 max_energy
 0
 500
-500.0
+200.0
 1
 1
 NIL
@@ -391,6 +453,96 @@ num_prison
 17
 1
 11
+
+PLOT
+603
+241
+1199
+440
+skrt
+ticks
+num_prison
+0.0
+100.0
+0.0
+20.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot num_prison"
+
+BUTTON
+1007
+15
+1128
+48
+NIL
+start-recorder
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+1007
+45
+1131
+79
+NIL
+reset-recorder\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+1007
+79
+1134
+112
+NIL
+save-recording\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+1005
+112
+1139
+157
+NIL
+vid:recorder-status
+17
+1
+11
+
+CHOOSER
+1005
+158
+1143
+203
+Source
+Source
+"Only View" "With Interface"
+0
 
 @#$#@#$#@
 ## WHAT IS IT?
