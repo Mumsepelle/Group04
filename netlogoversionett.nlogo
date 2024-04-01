@@ -73,7 +73,7 @@ ask one-of patches with [
     set citizen-array lput self citizen-array
     set state_timer 0                             ;tick-counter för att mäta fängelsestraff.
     set citizen_vision random 8 + 3               ;radie som medborgare märker om polis är i närheten.
-    set sentence_time random 30 + 15                ;värde för hur långt fängelsestraffet blir, allt från 5 till 30 ticks.
+    set sentence_time random 100 + 45                ;värde för hur långt fängelsestraffet blir, allt från 5 till 30 ticks.
     set current_citizenState "walking"
   ]
   ;-------------------------------CREATION OF COPS--------------------------------------------------
@@ -151,8 +151,10 @@ to citizen_behaviour
       set current_citizenState "walking"
       move-to one-of patches with [region != "prison"]
       set color green
+      set state_timer 0
 
     ]
+
     ]
   ;------------------------------------FLEEING-STATE-------------------------------------------------------------------------------------------------------------
 
