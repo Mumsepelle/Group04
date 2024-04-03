@@ -22,7 +22,7 @@ cops-own
 patches-own
 [
 region
-
+  hello
 ]
 
 
@@ -191,7 +191,7 @@ to cop_behaviour
 
     if current_copState = "patroling"
     [
-     let nearby-citizens Citizens in-radius 5
+     let nearby-citizens Citizens in-radius
     if any? nearby-citizens and [current_citizenState] of nearby-citizens != "inPrison"                                                        ; kolla om citizen inom 5 patches radie
     [
       let nearest-citizen min-one-of nearby-citizens [distance myself]            ; följ efter citizen inom 5 patches radie
@@ -313,7 +313,7 @@ number-of-cops
 number-of-cops
 0
 100
-15.0
+1.0
 1
 1
 NIL
@@ -328,7 +328,7 @@ number-of-citizens
 number-of-citizens
 0
 100
-25.0
+1.0
 1
 1
 NIL
