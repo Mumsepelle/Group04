@@ -11,6 +11,7 @@ agents-own [
   perceived-hardship  ; H, also ranging from 0-1 (inclusive)
   active?             ; if true, then the agent is actively rebelling
   jail-term           ; how many turns in jail remain? (if 0, the agent is not in jail)
+  state
 ]
 
 patches-own [
@@ -93,6 +94,52 @@ to move ; turtle procedure
 end
 
 ; AGENT BEHAVIOR
+to agent-behaviour
+  ;read_environment
+    update-beliefs
+  ;---------------STATE-MACHINE 4 AGENTS---------------------------------------
+  if state = "chill"
+  [
+    ;---DELIBERATION---------------
+    ifelse(grievance - risk-aversion * estimated-arrest-probability > threshold)
+    [
+      set state "rebel"
+    ]
+    [
+     set state "chill"
+    ]
+
+  ]
+
+  if state = "rebel"
+  [
+     ;-------------DELIBERATION---------------------------------------
+    ifelse(grievance - risk-aversion * estimated-arrest-probability > threshold)
+    [
+      set state "rebel"
+    ]
+    [
+      ifelse(jail-term > 0)
+
+      [set state "prison"]
+   ;else
+      [set state "chill"]
+    ]
+  ]
+
+  if state = "prison"
+  ;-------DELIBERATION------------------------------------------------------
+  [
+   ifelse(jail-term > 0)
+    [set state "prison"]
+  ;else
+    [set state "chill"]
+
+  ]
+
+
+end
+
 
 to determine-behavior
   set active? (grievance - risk-aversion * estimated-arrest-probability > threshold)
@@ -154,6 +201,15 @@ to display-cop
   ifelse visualization = "2D"
     [ set shape "triangle" ]
     [ set shape "person soldier" ]
+end
+to update-beliefs
+  let grievence perceived-hardship * (1 - government-legitimacy)
+  set risk-aversion
+
+
+end
+to update-environment
+
 end
 
 
