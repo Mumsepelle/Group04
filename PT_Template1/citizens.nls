@@ -1,0 +1,277 @@
+; File with the "to-go"- functionality of citizen-agents
+
+; FILE HISTORY:
+
+; 2024-01-29 Initial template, gks
+; 
+;
+;---------------------------------------------------
+
+
+;---- Specific, local variables of citizen-agents
+citizens-own [
+  ;cvision;-----------citizen-vision is set by ruler 'citizen-vision'
+  homeLoc;------------home location, where the agent lives
+  localxy;------------current local patch on which the agent is standing on
+  destinationxy;------destination patch to go to
+  ;destinationRegion;-destination region to go to
+  walkdesire?;--------flag to indicate wanting to move around
+  pArrest;------------Arrest probability.
+  C ;-----------------Number of citizen agents within cvision (includes oneself)
+  A ;-----------------Number of cop agents within cvision
+  hide?;--------------Decision to either continue with the task or to interrupt the task and hide from cops
+  fear ;--------------Personal fear variable
+  
+  anger ;-------------Value for the citizen’s anger or aggression
+  thrAnger ;----------Threshold for the anger value being ’high’
+  percAnger ;---------Percentage of change of anger, between 5-30 %
+  
+  
+  risk;---------------Risk avversion of individual citizens. Uniformly distributed in the range [0..1]. 
+  k ;-----------------Constant to finetune the arrest probability
+  f ;-----------------Constant for the update of the personal Fear value
+  
+  vFrust ;------------Value for the citizen’s frustration
+  thrFrust ;----------Threshold for the frustration value
+  alfaFrust ;---------Constant value that decreases 100% to about 91% within one week (=update time interval)
+  
+  jailterm ;----------time of jailterm
+  jailsentence ;------How much time the citizen has been sentenced to spend in prison
+  inPrison?;----------Whether or not the citizen is in prison
+  friendList;---------List of other citizen agents that are considered as friends
+  proState ;----------State variable for the proactive states. Enumeration = Study, 
+                      ;Work, Unemployed, ’Walking around’, ’Meeting friends’, ’Go out’, Political, Resignation, Demonstration
+                      ;Pursue of Happiness Goals
+  vWalk ;-------------Value for Walk-desire [0..1]
+  minWalk ;-----------Min-value for Walk-desire after fulfillment of desire
+  thrWalk ;-----------Threshold for Walk-desire
+  dWalk ;-------------Increase of vWalk for every day in percentage
+  
+  vMeet ;-------------Value for Meeting Friends-desire [0..1]
+  minMeet ;-----------Min-value for Meeting-Friends-desire after fulfillment of desire
+  thrMeet ;-----------Threshold for Meeting -Friends-desire
+  
+  vRest ;-------------Value for Going to Restaurant-desire [0..1]
+  minRest ;-----------Min-value for Going to Restaurant after fulfillment of desire
+  thrRest ;-----------Threshold for Going to Restaurant -desire
+  
+  vCinema ;-----------Value for Going to Cinema-desire [0..1]
+  minCinema ;---------Min-value for Going to Cinema after fulfillment of desire
+  thrCinema ;---------Threshold for Going to Cinema -desire
+  
+  ;different help-variables
+  counter; -----------general purpose counter
+  
+]
+
+
+
+
+
+to setup-citizens
+  ; setup citizen-agents
+  create-citizens num-citizens [
+    set label who
+    set shape "person" 
+    set size 1
+    set color white
+    set inPrison? false
+    move-to one-of patches with [region = "house"]
+    ; save the home location
+    set homeLoc patch-here
+    setxy [pxcor] of homeLoc [pycor] of homeLoc 
+    set friendList []
+    set beliefs []
+    set intentions []
+    set incoming-queue []
+    set destinationxy []
+    set walkdesire? false
+    set counter 0 ; all-purpose counter
+  ]
+
+end
+
+
+to citizen_behavior
+  
+;########## Updating the Beliefs, e.g. the agent's information about its environment ##############
+  
+;---- cops nearby, which one is the nearest? How many cops, how many citizens?
+let nearby-police other cops in-radius citizen-vision
+if any? nearby-police [let police min-one-of nearby-police [distance myself]]; identify the cop that is nearest  
+set A count nearby-police
+set C count (other citizens in-radius citizen-vision)
+; ---- identify a path to escape to if needed
+let hidingplaces neighborhood with [not any? cops-here and region = "empty" or region = "TownSquare"]
+;--- save local position
+set localxy patch-here
+  
+;---test purpose
+;set destinationxy one-of patches with [region = "Restaurant"]
+
+    
+    
+
+;################## REACTIVE BEHAVIOR ####################################
+; subsumption hierarchy with highest priority in first if-sentence
+ 
+  
+  (ifelse
+    ;add all the reactive behavior in order of their priorities- highest at the top of the list
+    inPrison? [bidePrisonTime]
+    ;(A > 1) and (any? nearby-police) [hideFromCops nearby-police hidingplaces]
+    any? nearby-police [hideFromCops nearby-police hidingplaces]
+    destinationxy != [] [moveToDestxy]
+    ;(destinationxy != []) and (destinationxy != localxy) [moveToDestxy]
+    walkdesire? [moveAround]
+    [proactiveBehavior] ; this function always at the end by itself
+  )
+  
+  
+end
+
+;"""""""""""""""""" Intentions """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+; if asked to go to prison  
+to gotoprison 
+  ; set flag
+  set inPrison? true
+  set color red
+  ; move to prison into an own cell (=own patch)
+  let prisoncell one-of patches with [not any? turtles-here and region = "Prison"]
+  ifelse (prisoncell != nobody) [move-to one-of patches with [not any? turtles-here and region = "Prison"]]
+  ; else 
+  [if Debug [print "Prison is too crowded, more than one prisoner in a cell"]
+  move-to one-of patches with [region = "Prison"]] 
+  if Debug [print (word "citizen: " who " is put into prison")]
+end
+
+; if in prison, bide your sentence-time
+to bidePrisonTime
+  set jailterm jailterm + 1 ;counting the time in prison
+  if Debug [print (word "citizen " who "is in prison since: " jailterm)]
+  if jailterm > jailsentence [; released from prison
+      set jailterm 0
+      ; move forward where there are no cops and is not prison
+      ;let places neighborhood with [not any? cops-here and region != "Prison"]
+      let places neighborhood with [not any? cops-here and region = "empty" or region = "TownSquare"]
+      if any? places [move-to one-of places]
+      set inPrison? false
+      set color yellow
+      if Debug [print (word "citizen " who "is released from prison") ]
+  ]
+end
+
+to hideFromCops [nearby-police hidingplaces]
+  let police min-one-of nearby-police [distance myself]
+  if Debug [print (word " citizen: " who " hiding from cop: " police)]
+  
+  if (distance police) > 0 [ ;check if the distance to this police is 0 then just give up, since heading produces errors 
+  set heading (towards police) + 180 ; face opposite from the nearest police
+  if any? hidingplaces [move-to one-of hidingplaces]
+        ] 
+end
+
+to moveAround
+  rt random 50
+  lt random 50
+  fd 1
+  if not (region = "empty" or region = "TownSquare") [
+    ; find a place that is not a building!
+    let footstep neighborhood with [region = "empty" or region = "TownSquare"] 
+    if any? footstep [move-to one-of footstep]]
+  if Debug [print (word who " is randomly moving around")]
+end
+
+to moveToDestxy
+  ifelse localxy != destinationxy [
+        face destinationxy
+        fd 1
+        if Debug [print (word who " in moveToDestxy")]
+  ] 
+  [ let reg []
+    ask patch-here [set reg region]
+    if Debug [print (word who " arrived at destination: " reg)]]
+end
+;"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+
+;################## PROACTIVE BEHAVIOR ####################################
+
+to proactiveBehavior
+  ; Finite State Machine for the proactive states
+  
+  ;########## Updating the Beliefs that are relevant only for the proactive states ##############
+  ;
+  ;
+  
+  
+  ; For testing purposes
+  let StateList (list "Study" "Work" "Unemployed" "WalkingAround" "MeetingFriends" "Go_out" "Political" "Demonstration")
+  
+  
+  
+  ;########## Deliberation of states, e.g. deciding on new states depending on new beliefs ##############
+  ; OBS: when changing a current state to a new and different state, some variables might need to be reset,
+  ; like for example walkdesire?, destinationxy, etc.
+  ;
+  
+  ; For testing
+  set proState item (random 8) StateList
+  if Debug [print (word who "deliberated proState = " proState)]
+  
+  
+  ; "Finite State Machine" 
+  (ifelse
+    proState = "Study" [study]
+    proState = "Work" [work]
+    proState = "Unemployed" [unemployed]
+    proState = "WalkingAround" [set walkdesire? true]
+    proState = "MeetingFriends" [meeting]
+    proState = "Go_out" [go_out]
+    proState = "Political" [political]
+    proState = "Demonstration" [demonstrate]   
+    ; add more states here, the order does not matter
+  )
+ 
+  
+end
+
+
+;"""""""""""""""""""" State functions """"""""""""""""""""""""""""""""""""""""""""""
+
+to study
+  if Debug [print (word who " is in the proactive state Study")]
+  set destinationxy one-of patches with [region = "University"]
+  if localxy = destinationxy [set counter counter + 1]
+  if counter > 3 [set destinationxy homeLoc]
+  
+end
+
+to work
+  if Debug [print (word who " is in the proactive state Work")]
+  set destinationxy one-of patches with [region = "Workplace"]
+end
+
+to unemployed
+  if Debug [print (word who " is in the proactive state Unemployed")]
+end
+
+to meeting
+  if Debug [print (word who " is in the proactive state MeetingFriends")]
+end
+
+to go_out
+  if Debug [print (word who " is in the proactive state Go_out")]
+  set destinationxy one-of patches with [region = "Restaurant"]
+end
+
+to political
+  if Debug [print (word who " is in the proactive state Political")]
+end
+
+to demonstrate
+  if Debug [print (word who " is in the proactive state Demonstration")]
+end
+
+;""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

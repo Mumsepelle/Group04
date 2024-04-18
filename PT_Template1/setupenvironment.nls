@@ -1,0 +1,147 @@
+; File with functionality for setting up the environment
+
+; FILE HISTORY:
+
+; 2024-01-29 Initial template, gks
+
+;---------------------------------------------------
+
+
+; ******************* SETUP ENVIRONMENT *****************
+;
+;---- General setup of the model and the regions
+;- use Model Settings under 'Interface'->'Settings...'
+;
+; World
+; location of origin: Corner
+; Bottom Left
+; min-pxcor: 0 (minimum x coordinate for patches)
+; max-pxcor: 66 (maximum x coordinate for patches)
+; min-pycor: 0 (minimum y coordinate for patches)
+; max-pycor: 33 (maximum y coordinate for patches)
+; X world wraps horizontally
+; X world wraps vertically
+; View
+; Patch size: 22.12
+; Font size: 10
+; Frame rate: 30
+;
+; X show tick counter
+; Tick counter label: ticks
+;-------------------------------------------------
+
+;---- Procedure
+to setup-environment
+    ; setup of all patches
+  
+  ask patches [
+    set region "empty"
+    set neighborhood patches in-radius citizen-vision
+    ;set doorway false
+  ]
+  
+  ;---- Place for Social Events
+  create-building 1 1 3 violet "SocialEvents"
+  
+  ;---- Evening entertainment place
+  create-building 1 2.5 2 pink "Cinema"
+  
+  ;---- Factory
+  create-building 1 3.5 6 brown "Factory"
+  
+  ;---- Work place
+  create-building 1 2 3 yellow "Workplace"
+  
+  ;---- Town Square
+  ;create-building 2 2 10 green "townSquare"
+  create-building 2 2 20 green "TownSquare"
+  
+  ;---- University
+  create-building 2 3.5 4 magenta "University"
+  
+  ;-----Espresso House
+  create-building 1.6 3.5 2 blue "EspressoHouse"
+  
+  ;---- Restaurants
+  create-building 3 1 2 cyan "Restaurant"
+  
+
+  ;---- Police Station
+  create-building 3 2 4 96 "PoliceStation"
+  
+ 
+  ;---- Prison
+  create-building 3 3 8 gray "Prison"
+  
+  ;---- Houses
+  ;
+  ; build enough houses, assume average of 4 citizens per house
+  let maxnrhouses count patches with [region = "empty"]
+  if maxnrhouses > floor (num-citizens / 4) [
+    let emptyPatches patches with [region = "empty"]
+    ask n-of floor (num-citizens / 4) emptyPatches [
+      set region "house"
+      set pcolor 74
+    ]
+  ]
+  
+  
+  ;---- setup of environment-variables
+  ;- time
+  set flagMorning true
+  set flagEvening false
+  set flagWeekend false
+  set time 0
+  
+  
+end ;- setup environment
+
+to create-building [x y buildingSize buildingColor regionName]
+  
+  let building-half-size buildingSize / 2
+  let building-xcor (max-pxcor / 4) * x - (building-half-size)
+  let building-ycor (max-pycor / 4) * y - (building-half-size)
+
+  ask patches with [
+    pxcor >= building-xcor and
+    pxcor < building-xcor + buildingSize and
+    pycor >= building-ycor and
+    pycor < building-ycor + buildingSize
+  ] [
+    set pcolor buildingColor
+    set region regionName
+  ]
+;  if not (regionName = "TownSquare") [
+;    ask patches with [
+;      pxcor = round (building-xcor) and
+;      pycor = round (building-ycor + building-half-size)
+;    ] [
+;      set pcolor red
+;      set doorway true
+;    ]
+;  ]
+  
+  if showPatchLabels [
+    ask patches with [
+      pxcor = round (building-xcor + building-half-size) and
+      pycor = round (building-ycor + building-half-size)
+    ] [
+      set plabel regionName
+    ]
+  ]
+  
+
+  ; Set the global variable to the location of the building. 
+  if regionName = "Prison" [ set locPrison patch building-xcor building-ycor ]
+  if regionName = "Factory" [ set locFactory patch building-xcor building-ycor ]
+  if regionName = "Workplace" [ set locWork patch building-xcor building-ycor ]
+  if regionName = "TownSquare" [ set locTownSquare patch building-xcor building-ycor ]
+  if regionName = "University" [ set locUni patch building-xcor building-ycor ]
+  if regionName = "Restaurant" [ set locRestaurant patch building-xcor building-ycor ]
+  if regionName = "PoliceStation" [ set locPolStation patch building-xcor building-ycor ]
+  if regionName = "SocialEvents" [ set locSocialEvents patch building-xcor building-ycor ]
+  if regionName = "Cinema" [ set locCinema patch building-xcor building-ycor ]
+  
+  
+end
+

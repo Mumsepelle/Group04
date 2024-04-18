@@ -1,0 +1,118 @@
+; File with the "to-go"- functionality of cops-agents
+
+; FILE HISTORY:
+
+; 2022-04-10 Initial template, gks
+; 
+;
+;
+;
+;---------------------------------------------------
+
+;---- Specific, local variables of cop-agents
+cops-own [
+  ;pvision ; cop-vision is set by slider
+  cop-speed
+  order ; Received order that currently is being carried out. Enumeration = rule-of-law,
+  ; arrest-troublemakers,looking-for-terrorists, suppress-riots
+]
+
+
+
+
+
+
+
+to setup-cops
+create-cops num-cops [
+    set label who
+    set shape "person police" 
+    set size 1
+    set color blue
+    ;setxy random 10 random 40
+    move-to one-of patches with [region = "PoliceStation"]
+    set cop-speed 1
+    set beliefs [] 
+    set intentions []
+    set incoming-queue []
+  ]
+  
+  
+end
+
+
+to cop_behavior
+  
+  
+  ;########## Updating the Beliefs, e.g. the agent's information about its environment ##############
+  ;
+  ; suspects = citizens nearby?
+  let suspect one-of citizens-here with [inPrison? = false] ; need to make sure the citizen is not in jail, otherwise can the cop be trapped besides
+  let hunted one-of other citizens with [inPrison? = false] in-radius cop-vision
+  
+  ;---test purpose
+  ;set destinationxy one-of patches with [region = "Restaurant"]
+  set order "rule-of-law"
+  ;set order "arrest-troublemakers"
+
+    
+    
+
+  ;################## REACTIVE BEHAVIOR ####################################
+  ; subsumption hierarchy with highest priority in first if-sentence
+  ; hiearchy of orders
+ 
+   
+  (ifelse 
+    order = "rule-of-law" [
+      (ifelse
+        true [patrolAround])]
+    order = "arrest-troublemakers" [
+      (ifelse 
+        suspect != nobody [arrest suspect]    
+        hunted != nobody [catch hunted]
+        true [patrolAround])]
+  ) 
+ 
+  
+end 
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+ 
+
+to patrolAround
+  let places neighborhood with [region = "empty" or region = "TownSquare"]
+  if any? places [move-to one-of places]
+end
+
+to arrest [suspect]
+  ; move the citizen to prison and mark them as arrested
+  if Debug [print (word " cop-agent: " who " puts suspect: " suspect " to prison!")]
+  ask suspect [
+           set jailsentence random max-jailterm
+           gotoprison
+        ]
+end
+
+to catch [hunted]
+  if Debug [print (word " cop-agent: " who " tries to catch: " hunted)]
+  face hunted 
+  forward cop-speed
+end
+
