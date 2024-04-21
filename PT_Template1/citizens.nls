@@ -62,6 +62,11 @@ citizens-own [
   ;different help-variables
   counter; -----------general purpose counter
   
+  testBoolean?
+  target
+  testTickCounter
+  hangingOut?
+  hangingOutTime
 ]
 
 
@@ -76,7 +81,10 @@ to setup-citizens
     set size 1
     set color white
     set inPrison? false
-    move-to one-of patches with [region = "house"]
+    ;move-to one-of patches with [region = "house"]
+    move-to one-of patches with [region = "TownSquare" and not any? turtles-here]
+    ;setxy random 60 random 60
+    
     ; save the home location
     set homeLoc patch-here
     setxy [pxcor] of homeLoc [pycor] of homeLoc 
@@ -87,6 +95,26 @@ to setup-citizens
     set destinationxy []
     set walkdesire? false
     set counter 0 ; all-purpose counter
+    
+    set testBoolean? false
+    set target nobody
+    set testTickCounter 0
+    set hangingOut? false
+  ]
+  
+  ask one-of citizens
+  [
+    set color red
+    let me self
+    set testBoolean? true
+    
+    ask other n-of 4 citizens
+    [
+      set color brown
+      let you self
+      
+      ask me [set friendlist lput you friendlist]
+    ]
   ]
 
 end
@@ -119,11 +147,15 @@ set localxy patch-here
   (ifelse
     ;add all the reactive behavior in order of their priorities- highest at the top of the list
     inPrison? [bidePrisonTime]
+    
     ;(A > 1) and (any? nearby-police) [hideFromCops nearby-police hidingplaces]
     any? nearby-police [hideFromCops nearby-police hidingplaces]
+    
     destinationxy != [] [moveToDestxy]
     ;(destinationxy != []) and (destinationxy != localxy) [moveToDestxy]
+    
     walkdesire? [moveAround]
+    
     [proactiveBehavior] ; this function always at the end by itself
   )
   
@@ -184,14 +216,20 @@ to moveAround
 end
 
 to moveToDestxy
-  ifelse localxy != destinationxy [
+  ifelse localxy != destinationxy 
+  [
         face destinationxy
         fd 1
         if Debug [print (word who " in moveToDestxy")]
   ] 
-  [ let reg []
+  [ 
+    let reg []
     ask patch-here [set reg region]
-    if Debug [print (word who " arrived at destination: " reg)]]
+    if Debug [print (word who " arrived at destination: " reg)]
+    
+    set destinationxy [] ;TILLAGD
+    ;HUR LÖSER VI OM MAN VILL RÖRA SIG MOT EN TARGET OCH INTE EN PATCH???
+  ]
 end
 ;"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -217,9 +255,14 @@ to proactiveBehavior
   ;
   
   ; For testing
-  set proState item (random 8) StateList
-  if Debug [print (word who "deliberated proState = " proState)]
+  if testBoolean? [set proState item 4 StateList]
   
+  ;if proState = 0 [set proState item (random 8) StateList]
+  ;ANNARS VILL VI GÖRA DEN PROSTATEN SOM ÄR VALD, TILLS DEN ÄR FÄRDIG
+  ;FÖR ATT DÅ INDIKERA ATT EN PROSTATE ÄR FÄRDIG SÄTTER VID DEN TILL 0. SEN SLUMPAS NÄSTA FRAM
+  ;KOMMER HA RIKTIGA CONDITIONS FÖR ATT VÄLJA PROSTATE SENARE I PROGRAMMET UTVECKLING
+  
+  if Debug [print (word who "deliberated proState = " proState)]
   
   ; "Finite State Machine" 
   (ifelse
@@ -248,28 +291,82 @@ to study
   
 end
 
+;----------------------------------------------------------------------------
 to work
   if Debug [print (word who " is in the proactive state Work")]
   set destinationxy one-of patches with [region = "Workplace"]
 end
 
+;----------------------------------------------------------------------------
 to unemployed
   if Debug [print (word who " is in the proactive state Unemployed")]
 end
 
+;----------------------------------------------------------------------------
 to meeting
   if Debug [print (word who " is in the proactive state MeetingFriends")]
+  
+  ifelse hangingOut?
+  [
+    set testTickCounter (testTickCounter + 1) 
+    
+    if testTickCounter = hangingOutTime
+    [
+      print word word who " is done hanging out with friend: " [who] of target 
+      set hangingOut? false
+      set testTickCounter 0
+      set target nobody
+      
+      print word who " is walking towards their house"
+      set destinationxy one-of patches with [region = "house"]
+    ]
+  ]
+  [
+    if target = nobody
+    [
+      let me self
+      set target one-of citizens with [member? self [friendlist] of me]
+      print word word who " wants to hang out with friend: " [who] of target 
+    ]
+
+    ;set destinationxy [patch-here] of target ;HUR LÖSER VI ATT MAN GÅR MOT EN TARGET OCH INTE MOT EN PATCH???
+    set heading towards target
+    fd 1
+    set testTickCounter (testTickCounter + 1) 
+    
+    if [patch-here] of target = patch-here
+    [
+      set hangingOut? true
+      print word word who " is hanging out with friend: " [who] of target
+      set testTickCounter 0
+      set hangingOutTime random 7 + 6
+    ]
+    
+    if testTickCounter = 12
+    [
+      print word word who " couldn't hang out with friend: " [who] of target
+      set target nobody
+      set testTickCounter 0
+      
+      print word who " is walking towards their house"
+      set destinationxy one-of patches with [region = "house"]
+    ]
+  ]
+  
 end
 
+;----------------------------------------------------------------------------
 to go_out
   if Debug [print (word who " is in the proactive state Go_out")]
   set destinationxy one-of patches with [region = "Restaurant"]
 end
 
+;----------------------------------------------------------------------------
 to political
   if Debug [print (word who " is in the proactive state Political")]
 end
 
+;----------------------------------------------------------------------------
 to demonstrate
   if Debug [print (word who " is in the proactive state Demonstration")]
 end
