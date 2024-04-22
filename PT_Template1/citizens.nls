@@ -62,6 +62,10 @@ citizens-own [
   ;different help-variables
   counter; -----------general purpose counter
   
+  ;TILLAGDA AV MIG
+  reachedDestination?
+  newMeeting?
+  friend
 ]
 
 
@@ -87,6 +91,11 @@ to setup-citizens
     set destinationxy []
     set walkdesire? false
     set counter 0 ; all-purpose counter
+    
+    ;TILLAGDA AV MIG
+    set reachedDestination? false
+    set newMeeting? true
+    set friend nobody
   ]
 
 end
@@ -121,7 +130,7 @@ set localxy patch-here
     inPrison? [bidePrisonTime]
     ;(A > 1) and (any? nearby-police) [hideFromCops nearby-police hidingplaces]
     any? nearby-police [hideFromCops nearby-police hidingplaces]
-    destinationxy != [] [moveToDestxy]
+    destinationxy != [] [moveToDestxyTest]
     ;(destinationxy != []) and (destinationxy != localxy) [moveToDestxy]
     walkdesire? [moveAround]
     [proactiveBehavior] ; this function always at the end by itself
@@ -192,6 +201,29 @@ to moveToDestxy
   [ let reg []
     ask patch-here [set reg region]
     if Debug [print (word who " arrived at destination: " reg)]]
+  set counter counter - 1
+end
+
+to moveToDestxyTest
+  (ifelse 
+    time = counter [set destinationxy [] set newMeeting? true]
+    localxy != destinationxy [
+        face destinationxy
+        fd 1
+        if Debug [print (word who " in moveToDestxy")]
+      
+        set reachedDestination? false
+    ] 
+    [ 
+      let reg []
+      ask patch-here [set reg region]
+      if Debug [print (word who " arrived at destination: " reg)]
+      
+      set reachedDestination? true
+      set destinationxy []
+    ]
+  )
+  
 end
 ;"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -217,8 +249,7 @@ to proactiveBehavior
   ;
   
   ; For testing
-  set proState item (random 8) StateList
-  if Debug [print (word who "deliberated proState = " proState)]
+  set proState "MeetingFriends"
   
   
   ; "Finite State Machine" 
@@ -259,6 +290,35 @@ end
 
 to meeting
   if Debug [print (word who " is in the proactive state MeetingFriends")]
+  
+  ifelse reachedDestination? [
+    ifelse not newMeeting? [
+      ask friend [
+      ;; stop friend
+    ]
+    set counter time + random 120
+    set newMeeting? true
+    ] [
+      if counter <= time [set destinationxy homeloc]
+    ]
+  ]
+  [
+    if newMeeting? [
+      let friendId item random length friendList friendList
+      set friend one-of turtles with [who = friendId] 
+      
+      set counter time + 120
+      
+      set newMeeting? false
+    ]
+    let target-patch 0
+    if friend != nobody [
+      ask friend [
+        set target-patch patch-here
+      ]
+    ]
+    set destinationxy target-patch
+  ]
 end
 
 to go_out

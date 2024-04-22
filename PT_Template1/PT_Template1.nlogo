@@ -130,7 +130,7 @@ to go
   ;---- Basic functions, like setting the time
   ;
   tick ;- update time
-  update-time-flags ;- update time
+  update-time-flags-test ;- update time
 
   ;---- Agents to-go part -------------
   ; Cyclic execution of what the agents are supposed to do
@@ -169,7 +169,6 @@ to update-time-flags
   ; reset every week (or every 168 hours).
 
 
-
   ; Set the time
   set time (time + 1)
   set time time mod 168
@@ -204,11 +203,51 @@ to update-time-flags
   ;if Debug [print word "Time: " time]
 
 end
+
+to update-time-flags-test
+  ; The time is measured in ticks where one tick is an hour.
+  ; The time is tracked in the time variable and this variable is
+  ; reset every week (or every 168 hours).
+
+
+  ; Set the time
+  set time (time + 1)
+  set time time mod 25200
+
+
+  ; Determine if it is morning, evening or weekend
+  let minute-of-day time mod 3600
+
+  ifelse (360 <= minute-of-day and minute-of-day <= 600)[
+    set flagMorning true
+  ] [
+  set flagMorning false
+  ]
+
+
+
+  ; Check if it is evening
+  ifelse (960 <= minute-of-day and minute-of-day <= 1320)[
+    set flagEvening true
+  ] [
+    set flagEvening false
+  ]
+
+  ; Check if it is weekend
+  ifelse (time >= 18000) [
+    set flagWeekend true
+  ] [
+    set flagWeekend false
+  ]
+
+  ;if Debug [print word "Time: " time]
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-549
+293
 10
-1731
+1475
 614
 -1
 -1
@@ -241,7 +280,7 @@ num-citizens
 num-citizens
 1
 150
-4.0
+5.0
 1
 1
 NIL
@@ -290,7 +329,7 @@ num-cops
 num-cops
 0
 150
-5.0
+0.0
 1
 1
 NIL
@@ -817,7 +856,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.3.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
