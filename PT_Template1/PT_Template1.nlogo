@@ -233,10 +233,10 @@ ticks
 30.0
 
 SLIDER
-23
-397
-137
-430
+8
+250
+122
+283
 num-citizens
 num-citizens
 1
@@ -248,10 +248,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-22
-24
-85
-57
+54
+11
+117
+66
 setup
 setup
 NIL
@@ -265,13 +265,13 @@ NIL
 1
 
 BUTTON
-21
-73
-84
-106
+118
+11
+181
+66
 go
 go
-NIL
+T
 1
 T
 OBSERVER
@@ -282,10 +282,10 @@ NIL
 1
 
 SLIDER
-23
-437
-136
-470
+8
+290
+121
+323
 num-cops
 num-cops
 0
@@ -297,40 +297,40 @@ NIL
 HORIZONTAL
 
 SLIDER
-156
-398
-248
-431
+141
+251
+233
+284
 citizen-vision
 citizen-vision
 1
 10
-1.0
+0.0
 0.1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-156
-436
-248
-469
+141
+289
+233
+322
 cop-vision
 cop-vision
 1
 100
-1.0
+0.0
 0.1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-21
-500
-109
-533
+10
+354
+98
+387
 start recorder
 start-recorder
 NIL
@@ -344,10 +344,10 @@ NIL
 1
 
 BUTTON
-19
-542
-108
-575
+8
+396
+97
+429
 reset recorder
 reset-recorder
 NIL
@@ -361,10 +361,10 @@ NIL
 1
 
 BUTTON
-18
-584
-107
-617
+7
+438
+96
+471
 save recording
 save-recording
 NIL
@@ -378,10 +378,10 @@ NIL
 1
 
 MONITOR
-124
-503
-244
-548
+113
+357
+233
+402
 NIL
 vid:recorder-status
 3
@@ -389,30 +389,30 @@ vid:recorder-status
 11
 
 CHOOSER
-124
-559
-243
-604
+113
+413
+232
+458
 Source
 Source
 "Only View" "With Interface"
-0
+1
 
 TEXTBOX
-18
-468
-253
-496
+7
+322
+242
+350
 _______________________________________
 11
 0.0
 1
 
 SWITCH
-26
-219
-163
-252
+48
+72
+185
+105
 showPatchLabels
 showPatchLabels
 0
@@ -420,10 +420,10 @@ showPatchLabels
 -1000
 
 SWITCH
-25
-263
-163
-296
+47
+116
+185
+149
 show-intentions
 show-intentions
 1
@@ -431,10 +431,10 @@ show-intentions
 -1000
 
 SWITCH
-26
-307
-163
-340
+48
+160
+185
+193
 show_messages
 show_messages
 1
@@ -442,10 +442,10 @@ show_messages
 -1000
 
 SWITCH
-25
-350
-159
-383
+47
+203
+181
+236
 Debug
 Debug
 1

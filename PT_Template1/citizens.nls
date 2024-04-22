@@ -65,10 +65,11 @@ citizens-own [
   
   target
   hangingOut?
+  linkTarget
   
-  testTickCounter
+  
   testBoolean?
-  hangingOutTime
+  
 ]
 
 
@@ -83,13 +84,16 @@ to setup-citizens
     set size 1
     set color white
     set inPrison? false
+    
     ;move-to one-of patches with [region = "house"]
     move-to one-of patches with [region = "TownSquare" and not any? turtles-here]
+    set homeLoc one-of patches with [region = "house"]
     ;setxy random 60 random 60
     
     ; save the home location
-    set homeLoc patch-here
-    setxy [pxcor] of homeLoc [pycor] of homeLoc 
+    ;set homeLoc patch-here
+    ;setxy [pxcor] of homeLoc [pycor] of homeLoc 
+    
     set friendList []
     set beliefs []
     set intentions []
@@ -115,7 +119,7 @@ to setup-citizens
     
     ask other n-of 4 citizens
     [
-      set color brown
+      set color red + 1
       let you self
       
       ask me [set friendlist lput you friendlist]
@@ -161,9 +165,9 @@ set localxy patch-here
     
     target != nobody [moveToTarget]
     
-    walkdesire? [moveAround]
-    
     timeCounter != nobody [timeChecker]
+    
+    walkdesire? [moveAround]
 
     [proactiveBehavior] ; this function always at the end by itself
   )
@@ -244,27 +248,43 @@ end
 to moveToTarget
   set heading towards target
   fd 1
-  if [patch-here] of target = patch-here
-  [
-    print word word who " is hanging out with friend: " [who] of target 
+  
+  (ifelse
+    [patch-here] of target = patch-here 
+    [
+      print word word who " is hanging out with friend: " [who] of target 
+      set linkTarget target
+      set target nobody
+      create-link-with linkTarget[tie]
+      set hangingOut? true
+    ]
     
-    create-link-with target[tie]
-    
-    set target nobody
-    set hangingOut? true
-  ]
-    ;boolean? hänga
-  ;if counter = förbestämd tid
-    ;gå hem
+    time >= timeCounter 
+    [
+      print word word who " couldn't reach friend: " [who] of target 
+      set target nobody
+      set timeCounter nobody
+      set hangingOut? false
+    ]
+  )
+  
 end
 
 to timeChecker
   if time = timeCounter 
   [
     set timeCounter nobody
-    print word who " is done hanging out"
+    print word who " is done hanging out and on the way home"
     set hangingOut? false
     set destinationxy homeLoc
+    
+    if linkTarget != nobody
+    [
+      ask link-with linkTarget [die]
+      ask linkTarget[set linkTarget nobody]
+      set linkTarget nobody
+    ]
+    
   ]
 end
 ;"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -347,72 +367,21 @@ to meeting
   [
     set timeCounter (time + random 7 + 6)
     ;set proState nobody
+    
   ]
   [
     if target = nobody
     [
       let me self
       set target one-of friendlist
-      print word word who " has targeted " [who] of target
+      print word word who " wants to hang out with " [who] of target
+      set timeCounter time + 12
       
       ask target
       [
         set target me
-        ;set proState "MeetingFriends"
-        ;set walkDesire? false
+        set timeCounter time + 12
       ]
-    ]
-  ]
-  
-end
-
-to meeting2
-  if Debug [print (word who " is in the proactive state MeetingFriends")]
-  
-  ifelse hangingOut?
-  [
-    set testTickCounter (testTickCounter + 1) 
-    
-    if testTickCounter = hangingOutTime
-    [
-      print word word who " is done hanging out with friend: " [who] of target 
-      set hangingOut? false
-      set testTickCounter 0
-      set target nobody
-      
-      print word who " is walking towards their house"
-      set destinationxy one-of patches with [region = "house"]
-    ]
-  ]
-  [
-    if target = nobody
-    [
-      let me self
-      set target one-of citizens with [member? self [friendlist] of me]
-      print word word who " wants to hang out with friend: " [who] of target 
-    ]
-
-    ;set destinationxy [patch-here] of target ;HUR LÖSER VI ATT MAN GÅR MOT EN TARGET OCH INTE MOT EN PATCH???
-    set heading towards target
-    fd 1
-    set testTickCounter (testTickCounter + 1) 
-    
-    if [patch-here] of target = patch-here
-    [
-      set hangingOut? true
-      print word word who " is hanging out with friend: " [who] of target
-      set testTickCounter 0
-      set hangingOutTime random 7 + 6
-    ]
-    
-    if testTickCounter = 12
-    [
-      print word word who " couldn't hang out with friend: " [who] of target
-      set target nobody
-      set testTickCounter 0
-      
-      print word who " is walking towards their house"
-      set destinationxy one-of patches with [region = "house"]
     ]
   ]
   
