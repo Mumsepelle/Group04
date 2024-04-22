@@ -61,11 +61,13 @@ citizens-own [
   
   ;different help-variables
   counter; -----------general purpose counter
+  timeCounter         ;counter used for counting time
   
-  testBoolean?
   target
-  testTickCounter
   hangingOut?
+  
+  testTickCounter
+  testBoolean?
   hangingOutTime
 ]
 
@@ -93,13 +95,15 @@ to setup-citizens
     set intentions []
     set incoming-queue []
     set destinationxy []
-    set walkdesire? false
+    ;set walkdesire? false
     set counter 0 ; all-purpose counter
     
-    set testBoolean? false
     set target nobody
-    set testTickCounter 0
     set hangingOut? false
+    set timeCounter nobody
+    set testBoolean? false
+    
+    set walkDesire? true
   ]
   
   ask one-of citizens
@@ -107,6 +111,7 @@ to setup-citizens
     set color red
     let me self
     set testBoolean? true
+    set walkDesire? false
     
     ask other n-of 4 citizens
     [
@@ -154,8 +159,12 @@ set localxy patch-here
     destinationxy != [] [moveToDestxy]
     ;(destinationxy != []) and (destinationxy != localxy) [moveToDestxy]
     
+    target != nobody [moveToTarget]
+    
     walkdesire? [moveAround]
     
+    timeCounter != nobody [timeChecker]
+
     [proactiveBehavior] ; this function always at the end by itself
   )
   
@@ -231,6 +240,33 @@ to moveToDestxy
     ;HUR LÖSER VI OM MAN VILL RÖRA SIG MOT EN TARGET OCH INTE EN PATCH???
   ]
 end
+
+to moveToTarget
+  set heading towards target
+  fd 1
+  if [patch-here] of target = patch-here
+  [
+    print word word who " is hanging out with friend: " [who] of target 
+    
+    create-link-with target[tie]
+    
+    set target nobody
+    set hangingOut? true
+  ]
+    ;boolean? hänga
+  ;if counter = förbestämd tid
+    ;gå hem
+end
+
+to timeChecker
+  if time = timeCounter 
+  [
+    set timeCounter nobody
+    print word who " is done hanging out"
+    set hangingOut? false
+    set destinationxy homeLoc
+  ]
+end
 ;"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 
@@ -257,7 +293,9 @@ to proactiveBehavior
   ; For testing
   if testBoolean? [set proState item 4 StateList]
   
-  ;if proState = 0 [set proState item (random 8) StateList]
+  ;if proState = nobody 
+  ;[set proState item (random 8) StateList]
+  
   ;ANNARS VILL VI GÖRA DEN PROSTATEN SOM ÄR VALD, TILLS DEN ÄR FÄRDIG
   ;FÖR ATT DÅ INDIKERA ATT EN PROSTATE ÄR FÄRDIG SÄTTER VID DEN TILL 0. SEN SLUMPAS NÄSTA FRAM
   ;KOMMER HA RIKTIGA CONDITIONS FÖR ATT VÄLJA PROSTATE SENARE I PROGRAMMET UTVECKLING
@@ -304,6 +342,31 @@ end
 
 ;----------------------------------------------------------------------------
 to meeting
+
+  ifelse hangingOut?
+  [
+    set timeCounter (time + random 7 + 6)
+    ;set proState nobody
+  ]
+  [
+    if target = nobody
+    [
+      let me self
+      set target one-of friendlist
+      print word word who " has targeted " [who] of target
+      
+      ask target
+      [
+        set target me
+        ;set proState "MeetingFriends"
+        ;set walkDesire? false
+      ]
+    ]
+  ]
+  
+end
+
+to meeting2
   if Debug [print (word who " is in the proactive state MeetingFriends")]
   
   ifelse hangingOut?
