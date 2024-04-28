@@ -123,10 +123,23 @@ to-report show-time
   report  time:show sim-time "yyyy-MM-d H:mm"
 
 end
+
+
+;DISPLAYS THE WEEKDAYS
 to-report show-day
 
-  let index (weekdayCounter mod length weekday)
+  let index (weekdayCounter mod 7)
   report item index weekdays
+end
+
+;REPORTS TRUE IF SATURDAY OR SUNDAY
+to-report is-weekend
+  ifelse (weekdayCounter mod 7 = 5) or (weekdayCounter mod 7 = 6)
+[
+  report true
+
+];else
+[report false ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -155,6 +168,17 @@ GRAPHICS-WINDOW
 1
 ticks
 30.0
+
+MONITOR
+0
+0
+0
+0
+NIL
+NIL
+17
+1
+11
 
 MONITOR
 680
