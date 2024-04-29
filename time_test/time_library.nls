@@ -1,0 +1,99 @@
+;CITIZENS NEED TO OWN A VARIABLE [time-taker-stop-time]
+
+extensions [time]
+
+globals
+[
+  current-time             ;THE CURRENT TIME IN THE SIMULATION
+  start-time               ;START TIME OF THE SIMULATION
+  time-passed              ;TEXT STRING SHOWING HOW MUCH TIME HAS BEEN SIMULATED  
+]
+
+;=======================================================================================================================================
+;INITIALIZATION OF TIME.
+to initTime
+  set start-time "2024/04/20 12:00:00"
+  set current-time time:anchor-to-ticks start-time 1 "minute"
+  set time-passed 0
+end
+
+;=======================================================================================================================================
+;STARTS A TIMER FROM THE CURRENT SIMULATION TIME. THE TIMER IS CHOSEN BY INPUTTING THE HOUR, MINUTE.
+to-report timeTaker [hour minute]
+  let temp-time time:plus current-time hour "hour"
+  set temp-time time:plus temp-time minute "minute"
+
+  report temp-time
+end
+;=======================================================================================================================================
+;RETURNS TRUE OR FALSE DEPENDING ON WHETHER A TIMETAKER HAS BEEN FINISHED OR NOT
+;EXAMPLE OF HOW TO USE THIS, SETTING A TIMER FOR AN HOUR
+;set time-taker-stop-time timeTaker 1 0
+to-report timeTakerDone
+  ifelse time-taker-stop-time != nobody
+  [
+    ifelse time:is-equal? current-time time-taker-stop-time
+    [
+      set time-taker-stop-time nobody
+      report true
+    ]
+    [report false]
+  ]
+  [report false]
+end
+
+;=======================================================================================================================================
+;RETURNS A BOOLEAN, TRUE OR FALSE, IF THE CURRENT SIMULATION TIME IS BETWEEN THE INPUTS min_hour AND max_hour. INPUT CAN ONLY BE HOURS AND NOT MINUTES!
+to-report betweenHours [min_hour max_hour]
+  ifelse (time:get "hour" current-time = min_hour and time:get "minute" current-time >= 0) or (time:get "hour" current-time = max_hour and time:get "minute" current-time = 0)
+    [report true]
+    [report false]
+end
+
+;=======================================================================================================================================
+;WRAPS THE TIME AROUND FROM 23 TO 06. DOES SO BY MANIPULATING THE TICK VALUE TO MATCH THAT OF THE SURPASSED NIGHT. SHOULD BE CALLED EVERY TICK.
+to timeWrapAround
+  set time-passed (word (time:difference-between start-time current-time "minute") " minutes")
+  if time:get "hour" current-time = 23
+  [
+    repeat 420 [tick]
+    set time-passed (word (time:difference-between start-time current-time "minute") " minutes")
+  ]
+end
+
+;=======================================================================================================================================
+;REPORTS THE CURRENT SIMULATION TIME IN YYYY-MM-D h:mm
+to-report show-time
+  report  time:show current-time "yyyy-MM-d H:mm"
+end
+
+;=======================================================================================================================================
+;RETURNS A BOOLEAN, TRUE OR FALSE, IF THE CURRENT SIMULATION TIME IS ON A SATURDAY OR SUNDAY
+to-report isWeekend
+  ifelse time:get "weekday" current-time = 6 or time:get "weekday" current-time = 7
+  [report true]
+  [report false]
+end
+
+;=======================================================================================================================================
+;RETURNS THE CURRENT MINUTE
+to-report getCurrentMinute
+  report time:get "minute" current-time
+end
+
+;=======================================================================================================================================
+;RETURNS THE CURRENT HOUR
+to-report getCurrentHour
+  report time:get "hour" current-time
+end
+
+;=======================================================================================================================================
+;RETURNS THE CURRENT DAY AS A INTEGER, MONDAY=1, TUESDAY=2, ETC.
+to-report getCurrentDay
+  report time:get "weekday" current-time
+end
+
+;=======================================================================================================================================
+to larm
+end
+;=======================================================================================================================================
