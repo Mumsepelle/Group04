@@ -1,4 +1,8 @@
-;CITIZENS NEED TO OWN A VARIABLE [time-taker-stop-time]
+;===========================================
+;CITIZENS NEED TO OWN VARIABLES:           |
+;agTimer1                                  |
+;agAlarm1                                  |
+;===========================================
 
 extensions [time]
 
@@ -19,6 +23,8 @@ end
 
 ;=======================================================================================================================================
 ;STARTS A TIMER FROM THE CURRENT SIMULATION TIME. THE TIMER IS CHOSEN BY INPUTTING THE HOUR, MINUTE.
+;EXAMPLE OF HOW TO USE THIS, SETTING A TIMER FOR 1.5 HOURS:
+;set agTimer1 timeTaker 1 30
 to-report timeTaker [hour minute]
   let temp-time time:plus current-time hour "hour"
   set temp-time time:plus temp-time minute "minute"
@@ -26,15 +32,14 @@ to-report timeTaker [hour minute]
   report temp-time
 end
 ;=======================================================================================================================================
-;RETURNS TRUE OR FALSE DEPENDING ON WHETHER A TIMETAKER HAS BEEN FINISHED OR NOT
-;EXAMPLE OF HOW TO USE THIS, SETTING A TIMER FOR AN HOUR
-;set time-taker-stop-time timeTaker 1 0
+;RETURNS TRUE OR FALSE DEPENDING ON WHETHER A TIMETAKER HAS BEEN FINISHED OR NOT: if timeTakerDone
+;MUST BE CALLED ON EACH GO
 to-report timeTakerDone
-  ifelse time-taker-stop-time != nobody
+  ifelse agTimer1 != nobody
   [
-    ifelse time:is-equal? current-time time-taker-stop-time
+    ifelse time:is-equal? current-time agTimer1
     [
-      set time-taker-stop-time nobody
+      set agTimer1 nobody
       report true
     ]
     [report false]
@@ -56,7 +61,11 @@ to timeWrapAround
   set time-passed (word (time:difference-between start-time current-time "minute") " minutes")
   if time:get "hour" current-time = 23
   [
-    repeat 420 [tick]
+    ;ask turtles with [breed = citizens] [set dailyFlag? false]
+    set current-time time:plus current-time 7 "hour"
+    set current-time time:anchor-to-ticks current-time 1 "minute"
+    reset-ticks
+    
     set time-passed (word (time:difference-between start-time current-time "minute") " minutes")
   ]
 end
@@ -94,6 +103,27 @@ to-report getCurrentDay
 end
 
 ;=======================================================================================================================================
-to larm
+;SET AN ALARM THIS WAY
+;alarm "2024/04/20 12:00:00"
+to alarm [date]
+  set agAlarm1 date
 end
 ;=======================================================================================================================================
+;RETURNS TRUE OR FALSE DEPENDING ON WHETHER AN ALARM HAS BEEN FINISHED OR NOT
+;MUST BE CALLED ON EACH GO
+to-report alarmDone
+  ifelse agAlarm1 != nobody
+  [
+    ifelse time:is-equal? current-time agAlarm1
+    [
+      set agAlarm1 nobody
+      report true
+    ]
+    [report false]
+  ]
+  [report false]
+end
+
+
+
+
