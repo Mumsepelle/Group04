@@ -39,8 +39,8 @@ to setup
     set color white
     move-to one-of patches with [region = "other" and not any? citizens-here]
 
-    set vPoli 70
-    set vRest 85
+    set vPoli random 100
+    set vRest
     set vCinema 90
 
     set thrPoli 100
